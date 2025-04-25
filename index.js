@@ -180,11 +180,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     console.log(`Processing batch ${b + 1}/${BATCHES}, starting at row ${globalStart}`);
     const stream      = batchStream(globalStart, BATCH_SIZE);
 
+    console.log(`Starting write for batch ${b + 1}/${BATCHES}...`);
+    console.time(`batch-write-${b + 1}`);
     await client.insert({
       table: 'drill_events',
       values: stream,
       format:'JSONEachRow',
     });
+    console.timeEnd(`batch-write-${b + 1}`);
+    console.log(`Finished write for batch ${b + 1}/${BATCHES}.`);
 
     const doneRows = (b + 1) * BATCH_SIZE;
     console.log(`✔ inserted ${doneRows.toLocaleString()} / ${TOTAL_ROWS.toLocaleString()}`);
