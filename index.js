@@ -10,9 +10,9 @@ import { Readable } from 'stream';
 // 0. CONFIGURABLE PARAMETERS
 // ─────────────────────────────────────────────────────────
 const TOTAL_ROWS   = Number(process.env.TOTAL_ROWS) || 5_000_000;   // ≤ 4 M
-const BATCH_SIZE   = 10_000;                                         // rows / insert
+const BATCH_SIZE   = 50_000;                                         // rows / insert
 const SLEEP_EVERY  = 250_000;                                        // rows
-const SLEEP_MS     = 5_000;                                         // 5 s
+const SLEEP_MS     = 1_000;                                         // 5 s
 
 console.log(`Configuration: TOTAL_ROWS=${TOTAL_ROWS}, BATCH_SIZE=${BATCH_SIZE}, SLEEP_EVERY=${SLEEP_EVERY}, SLEEP_MS=${SLEEP_MS}`);
 
@@ -38,7 +38,7 @@ const client = createClient({
     clickhouse_settings: {
         idle_connection_timeout: 30 * 1000, // Increased timeout
         async_insert: 1,
-        wait_for_async_insert: 1,
+        wait_for_async_insert: 0, // Changed to potentially speed up ingestion
         wait_end_of_query: 1,
     },
 });
