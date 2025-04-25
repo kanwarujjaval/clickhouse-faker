@@ -10,7 +10,7 @@ import { Readable } from 'stream';
 // 0. CONFIGURABLE PARAMETERS
 // ─────────────────────────────────────────────────────────
 const TOTAL_ROWS   = Number(process.env.TOTAL_ROWS) || 5_000_000;   // ≤ 4 M
-const BATCH_SIZE   = 50_000;                                         // rows / insert
+const BATCH_SIZE   = 25_000;                                         // rows / insert
 const SLEEP_EVERY  = 250_000;                                        // rows
 const SLEEP_MS     = 1_000;                                         // 5 s
 
@@ -25,7 +25,7 @@ const client = createClient({
     username: 'default',
     password: '',
     compression: {
-        request: false,
+        request: true,
         response: false,
     },
     application: "",
@@ -40,6 +40,8 @@ const client = createClient({
         async_insert: 1,
         wait_for_async_insert: 0, // Changed to potentially speed up ingestion
         wait_end_of_query: 1,
+        connect_timeout: 120,
+        http_connection_timeout: 120
     },
 });
 console.log('ClickHouse connection established.');
@@ -78,6 +80,12 @@ const CUSTOM_POOL  = [
 ];
 const LANG_CODES   = ['en', 'de', 'fr', 'es', 'pt', 'ru', 'zh', 'ja', 'ko', 'hi'];
 
+// ─────────────────────────────────────────────────────────
+// 3.1. UID GENERATION (7% of TOTAL_ROWS)
+// ─────────────────────────────────────────────────────────
+const NUM_UNIQUE_UIDS = Math.floor(TOTAL_ROWS * 0.07);
+console.log(`Will generate UIDs from a pool of ${NUM_UNIQUE_UIDS} unique IDs (7% of ${TOTAL_ROWS}) on the fly.`);
+
 
 function randUp () {
   return {
@@ -110,8 +118,10 @@ function makeRow (idx) {
     ts = Math.max(START_MS, Math.min(ts, NOW_MS));
   }
 
-  const uid  = idx + 1;
-  const _id  = `${faker.string.hexadecimal({length:40}).slice(2)}_${uid}_${ts}`;
+  // Deterministically generate UID based on index modulo the desired number of unique UIDs
+  const uidBucketIndex = idx % NUM_UNIQUE_UIDS;
+  const selectedUid = uidBucketIndex; // Use the numeric bucket index directly as the UID
+  const _id  = `${faker.string.hexadecimal({length:40}).slice(2)}_${selectedUid}_${ts}`; // Use selectedUid for _id
   const sgSel= faker.helpers.arrayElements(SG_KEYS,{min:15,max:20});
   const sgObj= Object.fromEntries(sgSel.map(k=>[k,faker.word.sample()]));
   Object.assign(sgObj,{
@@ -123,7 +133,7 @@ function makeRow (idx) {
   return {
     a: CONST_A,
     e: faker.helpers.arrayElement(EVENT_TYPES),
-    uid: uid.toString(),
+    uid: selectedUid, // Use the deterministically generated UID
     did: uuidv4(),
     lsid: _id,
     _id,
