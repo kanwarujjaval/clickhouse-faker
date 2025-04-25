@@ -28,6 +28,7 @@ const client = createClient({
         request: true,
         response: false,
     },
+    request_timeout: 120_000,
     application: "",
     keep_alive: {
         enabled: true,
